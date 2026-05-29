@@ -55,6 +55,31 @@ void AABGameMode::PostLogin(APlayerController* NewPlayer)
 
 	Super::PostLogin(NewPlayer);
 
+	// 클라이언트 정보 출력.
+	UNetDriver* NetDriver = GetNetDriver();
+	if (NetDriver)
+	{
+		// 클라이언트의 접속이 없는 경우.
+		if (NetDriver->ClientConnections.Num() == 0)
+		{
+			AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("No Client Connection"));
+		}
+		// 클라이언트의 접속이 있는 경우.
+		else
+		{
+			for (const auto& Connection : NetDriver->ClientConnections)
+			{
+				AB_LOG(LogABNetwork, Log, TEXT("Client Connection : %s"),
+					*Connection->GetName()
+				);
+			}
+		}
+	}
+	else
+	{
+		AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("No NetDriver"));
+	}
+
 	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("End"));
 }
 

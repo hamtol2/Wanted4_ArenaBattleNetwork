@@ -39,10 +39,17 @@ void AABPlayerController::PostNetInit()
 	if (NetDriver)
 	{
 		// 서버 연결 정보 출력.
+		if (NetDriver->ServerConnection)
+		{
+			AB_LOG(LogABNetwork, Log, TEXT("Server Connection: %s"),
+				*NetDriver->ServerConnection->GetName()
+			);
+		}
 	}
 	else
 	{
 		// 서버 연결 없음.
+		AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("No NetDriver"));
 	}
 
 	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("End"));
