@@ -37,9 +37,14 @@ void AABGameMode::PreLogin(
 	const FUniqueNetIdRepl& UniqueId,
 	FString& ErrorMessage)
 {
+	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("=========================="));
 	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("Begin"));
 
 	Super::PreLogin(Options, Address, UniqueId, ErrorMessage);
+
+	// ErrorMessage에 아무런 값을 입력하지 않으면 로그인을 통과시킴.
+	// ErrorMessage에 값이 입력되면 오류로 간주 -> 접속 차단.
+	//ErrorMessage = TEXT("Server is full");
 
 	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("End"));
 }
