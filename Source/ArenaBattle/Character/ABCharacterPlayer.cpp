@@ -12,6 +12,8 @@
 #include "CharacterStat/ABCharacterStatComponent.h"
 #include "Interface/ABGameInterface.h"
 
+#include "ArenaBattle.h"
+
 AABCharacterPlayer::AABCharacterPlayer()
 {
 	// Camera
@@ -86,6 +88,41 @@ void AABCharacterPlayer::SetDead()
 	{
 		DisableInput(PlayerController);
 	}
+}
+
+void AABCharacterPlayer::PossessedBy(AController* NewController)
+{
+	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("Begin"));
+
+	// PossessedBy 함수가 호출되기 전에 액터의 소유 확인.
+	AActor* OwnerActor = GetOwner();
+	if (OwnerActor)
+	{
+		// 소유 정보가 있다면, 소유자의 이름 출력.
+		AB_LOG(LogABNetwork, Log, TEXT("Onwer: %s"), 
+			*OwnerActor->GetName());
+	}
+	else
+	{
+		AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("No Owner"));
+	}
+
+	Super::PossessedBy(NewController);
+
+	// PossessedBy 함수가 호출된 후에 액터의 소유 확인.
+	OwnerActor = GetOwner();
+	if (OwnerActor)
+	{
+		// 소유 정보가 있다면, 소유자의 이름 출력.
+		AB_LOG(LogABNetwork, Log, TEXT("Onwer: %s"),
+			*OwnerActor->GetName());
+	}
+	else
+	{
+		AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("No Owner"));
+	}
+
+	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("End"));
 }
 
 void AABCharacterPlayer::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
