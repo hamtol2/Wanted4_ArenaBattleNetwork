@@ -37,6 +37,9 @@ protected:
 	UFUNCTION()
 	void OnRep_ServerRotationYaw();
 
+	UFUNCTION()
+	void OnRep_ServerLightColor();
+
 	// 리플리케이션 옵션을 지정한 속성 추가.
 	UPROPERTY(ReplicatedUsing = OnRep_ServerRotationYaw)
 	float ServerRotationYaw;
@@ -57,6 +60,10 @@ protected:
 	//
 	//// 값 변경에 사용할 변수.
 	//float BigDataElement = 0.0f;
+	
+	// 라이트 색상 속성. ( 휴면 상태 테스트 )
+	UPROPERTY(ReplicatedUsing = OnRep_ServerLightColor)
+	FLinearColor ServerLightColor;
 
 public:	
 	// Called every frame

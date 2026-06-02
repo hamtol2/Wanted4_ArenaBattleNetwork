@@ -6,6 +6,8 @@
 #include "Net/UnrealNetwork.h"
 #include "ArenaBattle.h"
 
+#include "Components/PointLightComponent.h"
+
 // Sets default values
 AABFountain::AABFountain()
 {
@@ -41,6 +43,10 @@ AABFountain::AABFountain()
 	// 거리 기반 연관성 판정에 사용할 거리 값 (제곱 값: 20미터).
 	//NetCullDistanceSquared = 4000000.0f;
 	SetNetCullDistanceSquared(4000000.0f);
+
+	// 휴면 상태 설정.
+	// 프로퍼티 리플리케이션의 경우에는 DORM_Initial 값만 사용 가능.
+	NetDormancy = DORM_Initial;
 }
 
 // Called when the game starts or when spawned
@@ -62,9 +68,34 @@ void AABFountain::BeginPlay()
 
 					// 지속적인 전속을 위한 데이터 변경.
 					//BigDataElement += 1.0f;
+
+					// 색상 값 변경.
+					ServerLightColor = FLinearColor(
+						FMath::RandRange(0.0f, 1.0f),
+						FMath::RandRange(0.0f, 1.0f),
+						FMath::RandRange(0.0f, 1.0f),
+						1.0f
+					);
+
+					// OnRep_ 함수는 서버에서 호출되지 않기 때문에 명시적으로 호출.
+					OnRep_ServerLightColor();
 				}
 			), 1.0f, true
 		);
+
+
+		// 두 번째 타이머 - 휴면 상태를 깨우기 위함.
+		FTimerHandle Handle2;
+		GetWorld()->GetTimerManager().SetTimer(
+			Handle2,
+			FTimerDelegate::CreateLambda([&]()
+				{
+					// 10초 경과 후에 휴면 상태 깨우기.
+					FlushNetDormancy();
+				}
+			), 10.0f, false
+		);
+
 	}
 }
 
@@ -130,6 +161,30 @@ void AABFountain::OnRep_ServerRotationYaw()
 
 	// 서버로부터 데이터를 받으면 0으로 초기화.
 	ClientTimeSinceUpdate = 0.0f;
+}
+
+void AABFountain::OnRep_ServerLightColor()
+{
+	// 클라이언트인 경우 전달 받은 값 출력.
+	if (!HasAuthority())
+	{
+		AB_LOG(
+			LogABNetwork,
+			Log,
+			TEXT("ServerLightColor: %s"),
+			*ServerLightColor.ToString()
+		);
+	}
+
+	// 서버-클라이언트 모두에서 실행.
+	// 컴포넌트 검색 - BP에서 추가한 컴포넌트 가져오기.
+	UPointLightComponent* PointLight 
+		= GetComponentByClass<UPointLightComponent>();
+	if (PointLight)
+	{
+		// 서버에서 전달 받은 색상을 라이트 색상으로 설정.
+		PointLight->SetLightColor(ServerLightColor);
+	}
 }
 
 // Called every frame
