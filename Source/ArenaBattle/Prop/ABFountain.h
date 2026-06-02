@@ -52,11 +52,11 @@ protected:
 	float ClientTimeBetweenLastUpdate = 0.0f;
 
 	// 의도적으로 네트워크 포화상태를 만들기 위한 변수.
-	UPROPERTY(Replicated)
-	TArray<float> BigData;
-
-	// 값 변경에 사용할 변수.
-	float BigDataElement = 0.0f;
+	//UPROPERTY(Replicated)
+	//TArray<float> BigData;
+	//
+	//// 값 변경에 사용할 변수.
+	//float BigDataElement = 0.0f;
 
 public:	
 	// Called every frame

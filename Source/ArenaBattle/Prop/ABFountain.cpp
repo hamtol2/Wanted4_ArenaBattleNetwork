@@ -58,10 +58,10 @@ void AABFountain::BeginPlay()
 				[&]() {
 
 					// 큰 데이터 설정 ( 400 바이트 크기 ).
-					BigData.Init(BigDataElement, 1000);
+					//BigData.Init(BigDataElement, 1000);
 
 					// 지속적인 전속을 위한 데이터 변경.
-					BigDataElement += 1.0f;
+					//BigDataElement += 1.0f;
 				}
 			), 1.0f, true
 		);
@@ -77,7 +77,7 @@ void AABFountain::GetLifetimeReplicatedProps(
 	DOREPLIFETIME(AABFountain, ServerRotationYaw);
 
 	// 데이터 전송 테스트를 위한 변수를 리플리케이션에 등록.
-	DOREPLIFETIME(AABFountain, BigData);
+	//DOREPLIFETIME(AABFountain, BigData);
 }
 
 void AABFountain::OnActorChannelOpen(
