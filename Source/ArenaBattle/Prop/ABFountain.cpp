@@ -33,6 +33,9 @@ AABFountain::AABFountain()
 
 	// 리플리케이션 활성화.
 	bReplicates = true;
+
+	// 네트워크 전송 빈도 설정 ( 1초에 1번으로 )
+	NetUpdateFrequency = 1.0f;
 }
 
 // Called when the game starts or when spawned
@@ -86,6 +89,12 @@ void AABFountain::OnRep_ServerRotationYaw()
 	
 	// 회전 값 설정.
 	RootComponent->SetWorldRotation(NewRotator);
+
+	// 이전 서버의 업데이트로부터 이번 업데이트까지 걸린 시간 저장.
+	ClientTimeBetweenLastUpdate = ClientTimeSinceUpdate;
+
+	// 서버로부터 데이터를 받으면 0으로 초기화.
+	ClientTimeSinceUpdate = 0.0f;
 }
 
 // Called every frame
@@ -111,6 +120,35 @@ void AABFountain::Tick(float DeltaTime)
 	// 클라이언트.
 	else
 	{
+		// 서버로부터 데이터를 받은 후에 경과한 시간 계산.
+		ClientTimeSinceUpdate += DeltaTime;
+
+		// 보간처리.
+
+		// 너무 작은 시간이 경과했을 때는 의미가 없음.
+		if (ClientTimeSinceUpdate < KINDA_SMALL_NUMBER)
+		{
+			return;
+		}
+
+		// 다음 네트워크 패킷 전송 때 전달될 회전 값 예측.
+		const float EstimateRotationYaw
+			= ServerRotationYaw + RotationRate * ClientTimeBetweenLastUpdate;
+
+		// 보간할 비율(alpha) 구하기.
+		const float LerpRatio
+			= ClientTimeSinceUpdate / ClientTimeBetweenLastUpdate;
+
+		// 보간(Lerp).
+		const float ClientNewYaw 
+			= FMath::Lerp(ServerRotationYaw, EstimateRotationYaw, LerpRatio);
+
+		// 회전 값 설정 및 적용.
+		FRotator ClientRotator = RootComponent->GetComponentRotation();
+		ClientRotator.Yaw = ClientNewYaw;
+
+		RootComponent->SetWorldRotation(ClientRotator);
+
 		//// 서버에서 전달된 값 출력.
 		//AB_LOG(
 		//	LogABNetwork, 

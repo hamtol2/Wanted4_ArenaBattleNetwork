@@ -38,6 +38,13 @@ protected:
 	// 회전 속도 변수.
 	float RotationRate = 30.0f;
 
+	// 서버로부터 패킷을 받은 후에 경과한 시간을 계산하기 위한 변수.
+	float ClientTimeSinceUpdate = 0.0f;
+
+	// 서버로부터 데이터를 받고 그 다음 데이터를 받았을 때까지 걸린 시간을 
+	// 기록할 변수.
+	float ClientTimeBetweenLastUpdate = 0.0f;
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
