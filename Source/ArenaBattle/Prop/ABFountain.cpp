@@ -46,7 +46,7 @@ AABFountain::AABFountain()
 
 	// 휴면 상태 설정.
 	// 프로퍼티 리플리케이션의 경우에는 DORM_Initial 값만 사용 가능.
-	NetDormancy = DORM_Initial;
+	//NetDormancy = DORM_Initial;
 }
 
 // Called when the game starts or when spawned
@@ -91,7 +91,7 @@ void AABFountain::BeginPlay()
 			FTimerDelegate::CreateLambda([&]()
 				{
 					// 10초 경과 후에 휴면 상태 깨우기.
-					FlushNetDormancy();
+					//FlushNetDormancy();
 				}
 			), 10.0f, false
 		);
@@ -109,6 +109,8 @@ void AABFountain::GetLifetimeReplicatedProps(
 
 	// 데이터 전송 테스트를 위한 변수를 리플리케이션에 등록.
 	//DOREPLIFETIME(AABFountain, BigData);
+	DOREPLIFETIME(AABFountain, ServerLightColor);
+	//DOREPLIFETIME_CONDITION(AABFountain, ServerLightColor, COND_InitialOnly);
 }
 
 void AABFountain::OnActorChannelOpen(
@@ -143,6 +145,14 @@ bool AABFountain::IsNetRelevantFor(
 	}
 
 	return NetRelevantResult;
+}
+
+void AABFountain::PreReplication(
+	IRepChangedPropertyTracker& ChangedPropertyTracker)
+{
+	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("Begin"));
+
+	Super::PreReplication(ChangedPropertyTracker);
 }
 
 void AABFountain::OnRep_ServerRotationYaw()

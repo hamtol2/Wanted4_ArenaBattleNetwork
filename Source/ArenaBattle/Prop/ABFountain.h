@@ -33,6 +33,11 @@ protected:
 		const AActor* ViewTarget, 
 		const FVector& SrcLocation) const override;
 
+	// 리플리케이션이 처리되기 바로 직전에 호출되는 함수
+	// 서버에서만 호출됨.
+	virtual void PreReplication(
+		IRepChangedPropertyTracker& ChangedPropertyTracker) override;
+
 	// 속성이 변경됐을 때 호출될 함수 지정.
 	UFUNCTION()
 	void OnRep_ServerRotationYaw();
