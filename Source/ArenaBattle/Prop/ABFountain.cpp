@@ -70,15 +70,25 @@ void AABFountain::BeginPlay()
 					//BigDataElement += 1.0f;
 
 					// 색상 값 변경.
-					ServerLightColor = FLinearColor(
+					//ServerLightColor = FLinearColor(
+					//	FMath::RandRange(0.0f, 1.0f),
+					//	FMath::RandRange(0.0f, 1.0f),
+					//	FMath::RandRange(0.0f, 1.0f),
+					//	1.0f
+					//);
+
+					// OnRep_ 함수는 서버에서 호출되지 않기 때문에 명시적으로 호출.
+					//OnRep_ServerLightColor();
+
+					const FLinearColor NewLightColor = FLinearColor(
 						FMath::RandRange(0.0f, 1.0f),
 						FMath::RandRange(0.0f, 1.0f),
 						FMath::RandRange(0.0f, 1.0f),
 						1.0f
 					);
 
-					// OnRep_ 함수는 서버에서 호출되지 않기 때문에 명시적으로 호출.
-					OnRep_ServerLightColor();
+					// 멀티캐스트 RPC 호출.
+					MulticastRPCChangeLightColor(NewLightColor);
 				}
 			), 1.0f, true
 		);
@@ -194,6 +204,25 @@ void AABFountain::OnRep_ServerLightColor()
 	{
 		// 서버에서 전달 받은 색상을 라이트 색상으로 설정.
 		PointLight->SetLightColor(ServerLightColor);
+	}
+}
+
+void AABFountain::MulticastRPCChangeLightColor_Implementation(
+	const FLinearColor& NewLightColor)
+{
+	AB_LOG(
+		LogABNetwork,
+		Log,
+		TEXT("LightColor: %s"),
+		*NewLightColor.ToString()
+	);
+
+	// 컴포넌트 검색 후 라이트 색상 설정.
+	UPointLightComponent* PointLight
+		= GetComponentByClass<UPointLightComponent>();
+	if (PointLight)
+	{
+		PointLight->SetLightColor(NewLightColor);
 	}
 }
 
