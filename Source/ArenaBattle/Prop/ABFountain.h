@@ -22,21 +22,21 @@ protected:
 	virtual void GetLifetimeReplicatedProps(
 		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	// 액터 채널이 열릴 때 호출되는 함수.
-	virtual void OnActorChannelOpen(
-		class FInBunch& InBunch, 
-		class UNetConnection* Connection) override;
+	//// 액터 채널이 열릴 때 호출되는 함수.
+	//virtual void OnActorChannelOpen(
+	//	class FInBunch& InBunch, 
+	//	class UNetConnection* Connection) override;
 
-	// 연관성 검사 함수.
-	virtual bool IsNetRelevantFor(
-		const AActor* RealViewer, 
-		const AActor* ViewTarget, 
-		const FVector& SrcLocation) const override;
+	//// 연관성 검사 함수.
+	//virtual bool IsNetRelevantFor(
+	//	const AActor* RealViewer, 
+	//	const AActor* ViewTarget, 
+	//	const FVector& SrcLocation) const override;
 
-	// 리플리케이션이 처리되기 바로 직전에 호출되는 함수
-	// 서버에서만 호출됨.
-	virtual void PreReplication(
-		IRepChangedPropertyTracker& ChangedPropertyTracker) override;
+	//// 리플리케이션이 처리되기 바로 직전에 호출되는 함수
+	//// 서버에서만 호출됨.
+	//virtual void PreReplication(
+	//	IRepChangedPropertyTracker& ChangedPropertyTracker) override;
 
 	// 속성이 변경됐을 때 호출될 함수 지정.
 	UFUNCTION()
@@ -47,11 +47,17 @@ protected:
 
 	// 멀티캐스트 RPC 함수.
 	UFUNCTION(NetMulticast, Unreliable)
-	void MulticastRPCChangeLightColor(const FLinearColor& NewLightColor);
+	void MulticastRPCChangeLightColor(
+		const FLinearColor& NewLightColor);
 
 	// 서버 RPC 함수.
-	UFUNCTION(Server, Unreliable)
+	UFUNCTION(Server, Unreliable, WithValidation)
 	void ServerRPCChangeLightColor();
+
+	// 클라이언트 RPC 함수.
+	UFUNCTION(Client, Unreliable)
+	void ClientRPCChangeLightColor(
+		const FLinearColor& NewLightColor);
 
 	// 리플리케이션 옵션을 지정한 속성 추가.
 	UPROPERTY(ReplicatedUsing = OnRep_ServerRotationYaw)
