@@ -49,6 +49,10 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 	void MulticastRPCChangeLightColor(const FLinearColor& NewLightColor);
 
+	// 서버 RPC 함수.
+	UFUNCTION(Server, Unreliable)
+	void ServerRPCChangeLightColor();
+
 	// 리플리케이션 옵션을 지정한 속성 추가.
 	UPROPERTY(ReplicatedUsing = OnRep_ServerRotationYaw)
 	float ServerRotationYaw;
