@@ -70,6 +70,15 @@ protected:
 
 	void Attack();
 
+	// 공격 처리 관련 인터페이스 함수 오버라이드.
+	virtual void AttackHitCheck() override;
+
+	// 공격 중인지 여부를 나타내는 플래그 (부울).
+	uint8 bCanAttack : 1;
+
+	// 애니메이션 재생 길이 값 ( 타이머에 시간 값으로 활용 ).
+	float AttackTime = 1.4667f;
+
 // UI Section
 protected:
 	virtual void SetupHUDWidget(class UABHUDWidget* InHUDWidget) override;

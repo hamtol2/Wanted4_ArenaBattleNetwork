@@ -13,6 +13,10 @@
 #include "Interface/ABGameInterface.h"
 
 #include "ArenaBattle.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Components/CapsuleComponent.h"
+#include "Physics/ABCollision.h"
+#include "Engine/DamageEvents.h"
 
 AABCharacterPlayer::AABCharacterPlayer()
 {
@@ -64,6 +68,9 @@ AABCharacterPlayer::AABCharacterPlayer()
 	}
 
 	CurrentCharacterControlType = ECharacterControlType::Quater;
+
+	// 시작할 때는 공격 가능한 상태로 설정.
+	bCanAttack = true;
 }
 
 void AABCharacterPlayer::BeginPlay()
@@ -125,7 +132,8 @@ void AABCharacterPlayer::PossessedBy(AController* NewController)
 	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("End"));
 }
 
-void AABCharacterPlayer::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
+void AABCharacterPlayer::SetupPlayerInputComponent(
+	class UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
@@ -137,7 +145,12 @@ void AABCharacterPlayer::SetupPlayerInputComponent(class UInputComponent* Player
 	EnhancedInputComponent->BindAction(ShoulderMoveAction, ETriggerEvent::Triggered, this, &AABCharacterPlayer::ShoulderMove);
 	EnhancedInputComponent->BindAction(ShoulderLookAction, ETriggerEvent::Triggered, this, &AABCharacterPlayer::ShoulderLook);
 	EnhancedInputComponent->BindAction(QuaterMoveAction, ETriggerEvent::Triggered, this, &AABCharacterPlayer::QuaterMove);
-	EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this, &AABCharacterPlayer::Attack);
+	EnhancedInputComponent->BindAction(
+		AttackAction, 
+		ETriggerEvent::Triggered, 
+		this, 
+		&AABCharacterPlayer::Attack
+	);
 }
 
 void AABCharacterPlayer::ChangeCharacterControl()
@@ -237,7 +250,97 @@ void AABCharacterPlayer::QuaterMove(const FInputActionValue& Value)
 
 void AABCharacterPlayer::Attack()
 {
-	ProcessComboCommand();
+	//ProcessComboCommand();
+
+	// 공격이 가능한 상태인지 확인.
+	if (bCanAttack)
+	{
+		// 공격이 시작됐으면, 재차 공격 입력이 되지 않도록 막기.
+		bCanAttack = false;
+
+		// 무브먼트 모드 none으로 설정 ( 공격할 때는 이동하지 않도록 ).
+		GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+
+		// 애니메이션 재생 시간 만큼 타이머 설정.
+		// 공격 종료 타이밍을 확인하기 위한 타이머
+		// (기존에는 몽타주의 델리게이트를 사용했음).
+		FTimerHandle Handle;
+		GetWorld()->GetTimerManager().SetTimer(
+			Handle,
+			FTimerDelegate::CreateLambda(
+				[this]() {
+					// 공격 종료 로직.
+					bCanAttack = true;
+
+					// 무브먼트 모드 되돌리기.
+					GetCharacterMovement()->SetMovementMode(
+						EMovementMode::MOVE_Walking
+					);
+				}
+			), AttackTime, false
+		);
+
+		// 공격 애님 몽타주 재생.
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			AnimInstance->Montage_Play(ComboActionMontage);
+		}
+	}
+}
+
+void AABCharacterPlayer::AttackHitCheck()
+{
+	FHitResult OutHitResult;
+	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
+
+	const float AttackRange = Stat->GetTotalStat().AttackRange;
+	const float AttackRadius = Stat->GetAttackRadius();
+	const float AttackDamage = Stat->GetTotalStat().Attack;
+	const FVector Start 
+		= GetActorLocation() 
+		+ GetActorForwardVector() * GetCapsuleComponent()->GetScaledCapsuleRadius();
+	const FVector End = Start + GetActorForwardVector() * AttackRange;
+
+	bool HitDetected = GetWorld()->SweepSingleByChannel(
+		OutHitResult, 
+		Start, 
+		End, 
+		FQuat::Identity, 
+		CCHANNEL_ABACTION, 
+		FCollisionShape::MakeSphere(AttackRadius), 
+		Params
+	);
+
+	if (HitDetected)
+	{
+		FDamageEvent DamageEvent;
+		OutHitResult.GetActor()->TakeDamage(
+			AttackDamage, 
+			DamageEvent, 
+			GetController(), 
+			this
+		);
+	}
+
+#if ENABLE_DRAW_DEBUG
+
+	FVector CapsuleOrigin = Start + (End - Start) * 0.5f;
+	float CapsuleHalfHeight = AttackRange * 0.5f;
+	FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
+
+	DrawDebugCapsule(
+		GetWorld(), 
+		CapsuleOrigin, 
+		CapsuleHalfHeight, 
+		AttackRadius, 
+		FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(), 
+		DrawColor, 
+		false, 
+		5.0f
+	);
+
+#endif
 }
 
 void AABCharacterPlayer::SetupHUDWidget(UABHUDWidget* InHUDWidget)
