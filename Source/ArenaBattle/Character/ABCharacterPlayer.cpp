@@ -334,7 +334,7 @@ void AABCharacterPlayer::AttackHitCheck()
 {
 	// 공격 판정은 중요한 로직이기 때문에 서버에서 처리.
 	//if (HasAuthority())
-	
+
 	// 기존에 서버에서 판정하던 내용을
 	// 소유 클라이언트에서 처리하도록 변경.
 	if (IsLocallyControlled())
@@ -348,7 +348,7 @@ void AABCharacterPlayer::AttackHitCheck()
 		const float AttackRange = Stat->GetTotalStat().AttackRange;
 		const float AttackRadius = Stat->GetAttackRadius();
 		const float AttackDamage = Stat->GetTotalStat().Attack;
-		
+
 		const FVector Forward = GetActorForwardVector();
 		const FVector Start
 			= GetActorLocation()
@@ -396,32 +396,64 @@ void AABCharacterPlayer::AttackHitCheck()
 		{
 
 		}
-		
 
-//#if ENABLE_DRAW_DEBUG
-//
-//		FVector CapsuleOrigin = Start + (End - Start) * 0.5f;
-//		float CapsuleHalfHeight = AttackRange * 0.5f;
-//		FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
-//
-//		DrawDebugCapsule(
-//			GetWorld(),
-//			CapsuleOrigin,
-//			CapsuleHalfHeight,
-//			AttackRadius,
-//			FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(),
-//			DrawColor,
-//			false,
-//			5.0f
-//		);
-//
-//#endif
+
+		//#if ENABLE_DRAW_DEBUG
+		//
+		//		FVector CapsuleOrigin = Start + (End - Start) * 0.5f;
+		//		float CapsuleHalfHeight = AttackRange * 0.5f;
+		//		FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
+		//
+		//		DrawDebugCapsule(
+		//			GetWorld(),
+		//			CapsuleOrigin,
+		//			CapsuleHalfHeight,
+		//			AttackRadius,
+		//			FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(),
+		//			DrawColor,
+		//			false,
+		//			5.0f
+		//		);
+		//
+		//#endif
 	}
 }
 
 void AABCharacterPlayer::ServerRPCNotifyHit_Implementation(
 	const FHitResult& HitResult, float HitCheckTime)
 {
+	// 충돌 정보로부터 액터 가져오기.
+	AActor* HitActor = HitResult.GetActor();
+	if (IsValid(HitActor))
+	{
+		// 클라이언트로부터 받은 정보를 기반으로 처리는 하되,
+		// 검증은 진행.
+		// 거리 기반으로 검증.
+
+		// 맞은 위치.
+		const FVector HitLocation = HitResult.Location;
+
+		// 맞은 액터의 범위 가져오기.
+		// 캐릭터를 감싸는 박스 정보 가져오기.
+		// 캐릭터의 위치를 사용해도 됨.
+		const FBox HitBox = HitActor->GetComponentsBoundingBox();
+
+		// 바운딩 박스의 중심 위치.
+		const FVector ActorBoxCenter = HitBox.GetCenter();
+
+		// 거리 확인.
+		if (FVector::DistSquared(HitLocation, ActorBoxCenter)
+			<= AcceptCheckDistance * AcceptCheckDistance)
+		{
+			// 인정 -> 대미지 처리.
+		}
+		else
+		{
+			// 인정 안함.
+			AB_LOG(LogABNetwork, Warning, TEXT("%s"), TEXT("Hit Rejected!"));
+		}
+
+	}
 }
 
 bool AABCharacterPlayer::ServerRPCNotifyHit_Validate(
@@ -431,17 +463,17 @@ bool AABCharacterPlayer::ServerRPCNotifyHit_Validate(
 }
 
 void AABCharacterPlayer::ServerRPCNotifyMiss_Implementation(
-	FVector TraceStart, 
-	FVector TraceEnd, 
-	FVector TraceDir, 
+	FVector TraceStart,
+	FVector TraceEnd,
+	FVector TraceDir,
 	float HitCheckTime)
 {
 }
 
 bool AABCharacterPlayer::ServerRPCNotifyMiss_Validate(
-	FVector TraceStart, 
-	FVector TraceEnd, 
-	FVector TraceDir, 
+	FVector TraceStart,
+	FVector TraceEnd,
+	FVector TraceDir,
 	float HitCheckTime)
 {
 	return true;

@@ -120,6 +120,9 @@ protected:
 	// 클라이언트와 서버의 시간 차이를 기록하기 위한 변수.
 	float AttackTimeDifference = 0.0f;
 
+	// 공격 판정에 사용할 거리 값.
+	float AcceptCheckDistance = 300.0f;
+
 // UI Section
 protected:
 	virtual void SetupHUDWidget(class UABHUDWidget* InHUDWidget) override;
