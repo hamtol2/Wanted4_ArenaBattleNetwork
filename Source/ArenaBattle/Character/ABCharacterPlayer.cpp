@@ -17,6 +17,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Physics/ABCollision.h"
 #include "Engine/DamageEvents.h"
+#include "Net/UnrealNetwork.h"
 
 AABCharacterPlayer::AABCharacterPlayer()
 {
@@ -71,6 +72,9 @@ AABCharacterPlayer::AABCharacterPlayer()
 
 	// 시작할 때는 공격 가능한 상태로 설정.
 	bCanAttack = true;
+
+	// 액터 리플리케이션 활성화.
+	bReplicates = true;
 }
 
 void AABCharacterPlayer::BeginPlay()
@@ -130,6 +134,14 @@ void AABCharacterPlayer::PossessedBy(AController* NewController)
 	}
 
 	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("End"));
+}
+
+void AABCharacterPlayer::GetLifetimeReplicatedProps(
+	TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AABCharacterPlayer, bCanAttack);
 }
 
 void AABCharacterPlayer::SetupPlayerInputComponent(
@@ -255,11 +267,109 @@ void AABCharacterPlayer::Attack()
 	// 공격이 가능한 상태인지 확인.
 	if (bCanAttack)
 	{
+		// 공격 입력이 들어오면 ServerRPC 호출.
+		ServerRPCAttack();
+	}
+}
+
+void AABCharacterPlayer::AttackHitCheck()
+{
+	// 공격 판정은 중요한 로직이기 때문에 서버에서 처리.
+	if (HasAuthority())
+	{
+		FHitResult OutHitResult;
+		FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
+
+		const float AttackRange = Stat->GetTotalStat().AttackRange;
+		const float AttackRadius = Stat->GetAttackRadius();
+		const float AttackDamage = Stat->GetTotalStat().Attack;
+		const FVector Start
+			= GetActorLocation()
+			+ GetActorForwardVector() * GetCapsuleComponent()->GetScaledCapsuleRadius();
+		const FVector End = Start + GetActorForwardVector() * AttackRange;
+
+		bool HitDetected = GetWorld()->SweepSingleByChannel(
+			OutHitResult,
+			Start,
+			End,
+			FQuat::Identity,
+			CCHANNEL_ABACTION,
+			FCollisionShape::MakeSphere(AttackRadius),
+			Params
+		);
+
+		if (HitDetected)
+		{
+			FDamageEvent DamageEvent;
+			OutHitResult.GetActor()->TakeDamage(
+				AttackDamage,
+				DamageEvent,
+				GetController(),
+				this
+			);
+		}
+
+#if ENABLE_DRAW_DEBUG
+
+		FVector CapsuleOrigin = Start + (End - Start) * 0.5f;
+		float CapsuleHalfHeight = AttackRange * 0.5f;
+		FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
+
+		DrawDebugCapsule(
+			GetWorld(),
+			CapsuleOrigin,
+			CapsuleHalfHeight,
+			AttackRadius,
+			FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(),
+			DrawColor,
+			false,
+			5.0f
+		);
+
+#endif
+	}
+}
+
+// OnRep_ 함수는 클라이언트에서만 호출.
+// 서버에서 전달 받은 값과 자신(클라이언트)이 가진 값이 다를 때 호출됨.
+void AABCharacterPlayer::OnRep_CanAttack()
+{
+	// 공격 중 상태.
+	if (!bCanAttack)
+	{
+		// 공격 중일 때는 이동 모드를 None으로 설정.
+		GetCharacterMovement()->SetMovementMode(
+			EMovementMode::MOVE_None
+		);
+	}
+	// 공격 중이 아닐 때.
+	else
+	{
+		// 공격이 아닐 때는 이동 모드를 Walking으로 설정.
+		GetCharacterMovement()->SetMovementMode(
+			EMovementMode::MOVE_Walking
+		);
+	}
+}
+
+void AABCharacterPlayer::MulticastRPCAttack_Implementation()
+{
+	// 클라에서 Attack 실행 -> ServerRPCAttack -> MulticastRPC -> 
+	// 클라: bCanAttack ? true.
+	// 서버: bCanAttack -> false로 변경.
+	// 리플리케이션 틱 스케줄에 의해 bCanAttack이 클라로 전달.
+	// 클라에서 bCanAttack이 false인 값을 받음. 이때 이전에 true였는데 false로 변경됨.
+	// OnRep_
+
+	// 서버 로직.
+	if (HasAuthority())
+	{
 		// 공격이 시작됐으면, 재차 공격 입력이 되지 않도록 막기.
 		bCanAttack = false;
 
 		// 무브먼트 모드 none으로 설정 ( 공격할 때는 이동하지 않도록 ).
-		GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+		//GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
+		OnRep_CanAttack();
 
 		// 애니메이션 재생 시간 만큼 타이머 설정.
 		// 공격 종료 타이밍을 확인하기 위한 타이머
@@ -273,74 +383,33 @@ void AABCharacterPlayer::Attack()
 					bCanAttack = true;
 
 					// 무브먼트 모드 되돌리기.
-					GetCharacterMovement()->SetMovementMode(
-						EMovementMode::MOVE_Walking
-					);
+					//GetCharacterMovement()->SetMovementMode(
+					//	EMovementMode::MOVE_Walking
+					//);
+
+					OnRep_CanAttack();
 				}
 			), AttackTime, false
 		);
+	}
 
-		// 공격 애님 몽타주 재생.
-		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-		if (AnimInstance)
-		{
-			AnimInstance->Montage_Play(ComboActionMontage);
-		}
+	// 공격 애님 몽타주 재생.
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		AnimInstance->Montage_Play(ComboActionMontage);
 	}
 }
 
-void AABCharacterPlayer::AttackHitCheck()
+bool AABCharacterPlayer::ServerRPCAttack_Validate()
 {
-	FHitResult OutHitResult;
-	FCollisionQueryParams Params(SCENE_QUERY_STAT(Attack), false, this);
+	return true;
+}
 
-	const float AttackRange = Stat->GetTotalStat().AttackRange;
-	const float AttackRadius = Stat->GetAttackRadius();
-	const float AttackDamage = Stat->GetTotalStat().Attack;
-	const FVector Start 
-		= GetActorLocation() 
-		+ GetActorForwardVector() * GetCapsuleComponent()->GetScaledCapsuleRadius();
-	const FVector End = Start + GetActorForwardVector() * AttackRange;
-
-	bool HitDetected = GetWorld()->SweepSingleByChannel(
-		OutHitResult, 
-		Start, 
-		End, 
-		FQuat::Identity, 
-		CCHANNEL_ABACTION, 
-		FCollisionShape::MakeSphere(AttackRadius), 
-		Params
-	);
-
-	if (HitDetected)
-	{
-		FDamageEvent DamageEvent;
-		OutHitResult.GetActor()->TakeDamage(
-			AttackDamage, 
-			DamageEvent, 
-			GetController(), 
-			this
-		);
-	}
-
-#if ENABLE_DRAW_DEBUG
-
-	FVector CapsuleOrigin = Start + (End - Start) * 0.5f;
-	float CapsuleHalfHeight = AttackRange * 0.5f;
-	FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
-
-	DrawDebugCapsule(
-		GetWorld(), 
-		CapsuleOrigin, 
-		CapsuleHalfHeight, 
-		AttackRadius, 
-		FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(), 
-		DrawColor, 
-		false, 
-		5.0f
-	);
-
-#endif
+void AABCharacterPlayer::ServerRPCAttack_Implementation()
+{
+	// 멀티캐스트 RPC 호출.
+	MulticastRPCAttack();
 }
 
 void AABCharacterPlayer::SetupHUDWidget(UABHUDWidget* InHUDWidget)

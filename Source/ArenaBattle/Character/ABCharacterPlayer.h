@@ -23,6 +23,9 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void SetDead() override;
 	virtual void PossessedBy(AController* NewController) override;
+	
+	virtual void GetLifetimeReplicatedProps(
+		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
@@ -73,7 +76,19 @@ protected:
 	// 공격 처리 관련 인터페이스 함수 오버라이드.
 	virtual void AttackHitCheck() override;
 
+	// 공격 명령 처리를 위한 ServerRPC.
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerRPCAttack();
+
+	// 서버 포함, 클라이언트에 공격 명령 전달을 위한 멀티캐스트 RPC.
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastRPCAttack();
+
+	UFUNCTION()
+	void OnRep_CanAttack();
+
 	// 공격 중인지 여부를 나타내는 플래그 (부울).
+	UPROPERTY(ReplicatedUsing = OnRep_CanAttack)
 	uint8 bCanAttack : 1;
 
 	// 애니메이션 재생 길이 값 ( 타이머에 시간 값으로 활용 ).
