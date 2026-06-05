@@ -3,6 +3,8 @@
 
 #include "CharacterStat/ABCharacterStatComponent.h"
 #include "GameData/ABGameSingleton.h"
+#include "Net/UnrealNetwork.h"
+#include "ArenaBattle.h"
 
 // Sets default values for this component's properties
 UABCharacterStatComponent::UABCharacterStatComponent()
@@ -11,6 +13,9 @@ UABCharacterStatComponent::UABCharacterStatComponent()
 	AttackRadius = 50.0f;
 
 	bWantsInitializeComponent = true;
+
+	// 리플리케이션 활성화.
+	SetIsReplicated(true);
 }
 
 void UABCharacterStatComponent::InitializeComponent()
@@ -19,6 +24,46 @@ void UABCharacterStatComponent::InitializeComponent()
 
 	SetLevelStat(CurrentLevel);
 	SetHp(BaseStat.MaxHp);
+}
+
+void UABCharacterStatComponent::BeginPlay()
+{
+	AB_SUBLOG(LogABNetwork, Log, TEXT("%s"), TEXT("Begin"));
+
+	Super::BeginPlay();
+}
+
+void UABCharacterStatComponent::ReadyForReplication()
+{
+	AB_SUBLOG(LogABNetwork, Log, TEXT("%s"), TEXT("Begin"));
+
+	Super::ReadyForReplication();
+}
+
+void UABCharacterStatComponent::GetLifetimeReplicatedProps(
+	TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(UABCharacterStatComponent, CurrentHp);
+}
+
+// OnRep_ 함수는 클라이언트에서만 호출.
+// 서버로부터 값을 받았을 때 기존과 다를 때 호출됨 ( 콜백 ).
+// 따라서 Hp가 변경되었을 때 필요한 로직 수행.
+void UABCharacterStatComponent::OnRep_CurrentHp()
+{
+	AB_SUBLOG(LogABNetwork, Log, TEXT("%s"), TEXT("Begin"));
+
+	// 이미 서버로부터 갱신된 CurrentHp 값을 받았기 때문에
+	// 델리게이트를 통해서 전달.
+	OnHpChanged.Broadcast(CurrentHp);
+
+	// 죽음 판정.
+	if (CurrentHp <= KINDA_SMALL_NUMBER)
+	{
+		OnHpZero.Broadcast();
+	}
 }
 
 void UABCharacterStatComponent::SetLevelStat(int32 InNewLevel)
