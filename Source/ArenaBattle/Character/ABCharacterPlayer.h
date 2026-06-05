@@ -88,6 +88,22 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 	void MulticastRPCAttack();
 
+	// 클라이언트에서 공격 판정을 했을 때 충돌한 경우 실행.
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerRPCNotifyHit(
+		const FHitResult& HitResult, float HitCheckTime
+	);
+
+	// 클라이언트에서 공격 판정을 했을 때 충돌하지 않은 경우 실행.
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerRPCNotifyMiss(
+		FVector TraceStart, 
+		FVector TraceEnd,
+		FVector TraceDir,
+		float HitCheckTime
+	);
+
+
 	UFUNCTION()
 	void OnRep_CanAttack();
 
