@@ -99,6 +99,10 @@ protected:
 	UFUNCTION(NetMulticast, Unreliable)
 	void MulticastRPCAttack();
 
+	// 공격 애니메이션 재생 요청 클라이언트 RPC.
+	UFUNCTION(Client, Unreliable)
+	void ClientRPCPlayAnimation(AABCharacterPlayer* CharacterToPlay);
+
 	// 클라이언트에서 공격 판정을 했을 때 충돌한 경우 실행.
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerRPCNotifyHit(

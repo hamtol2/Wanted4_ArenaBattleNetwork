@@ -20,6 +20,7 @@
 #include "Net/UnrealNetwork.h"
 
 #include "GameFramework/GameStateBase.h"
+#include "EngineUtils.h"
 
 AABCharacterPlayer::AABCharacterPlayer()
 {
@@ -476,6 +477,16 @@ void AABCharacterPlayer::DrawDebugAttackRange(
 #endif
 }
 
+void AABCharacterPlayer::ClientRPCPlayAnimation_Implementation(
+	AABCharacterPlayer* CharacterToPlay)
+{
+	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("Begin"));
+	if (CharacterToPlay)
+	{
+		CharacterToPlay->PlayAttackAnimation();
+	}
+}
+
 void AABCharacterPlayer::ServerRPCNotifyHit_Implementation(
 	const FHitResult& HitResult, float HitCheckTime)
 {
@@ -680,7 +691,35 @@ void AABCharacterPlayer::ServerRPCAttack_Implementation(
 	PlayAttackAnimation();
 
 	// 멀티캐스트 RPC 호출.
-	MulticastRPCAttack();
+	//MulticastRPCAttack();
+
+	// 필요한 클라이언트에만 ClientRPC를 호출.
+	for (APlayerController* PlayerController 
+		: TActorRange<APlayerController>(GetWorld()))
+	{
+		// 2개 필터링.
+		// 필터링 대상#1: 요청한 클라이언트.
+		// 필터링 대상#2: 서버에 있는 PlayerController.
+
+		// #1: 요청한 클라이언트의 PlayerController 필터링.
+		if (PlayerController && PlayerController != GetController())
+		{
+			// #2: 추가로 필터링 서버에서 제어하는 PlayerController 필터링.
+			if (!PlayerController->IsLocalController())
+			{
+				// 해당 클라이언트한테 애니메이션 재생 전달.
+				AABCharacterPlayer* OtherPlayer
+					= Cast<AABCharacterPlayer>(PlayerController->GetPawn());
+				if (OtherPlayer)
+				{
+					// ClientRPC를 통해서 아래 로직을 수행 요청.
+					//OtherPlayer->PlayerAttackAnimaion()....
+					OtherPlayer->ClientRPCPlayAnimation(this);
+				}
+			}
+		}
+	}
+
 }
 
 void AABCharacterPlayer::SetupHUDWidget(UABHUDWidget* InHUDWidget)
