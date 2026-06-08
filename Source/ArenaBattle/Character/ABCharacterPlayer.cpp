@@ -369,7 +369,6 @@ void AABCharacterPlayer::AttackHitCheck()
 		float HitCheckTime
 			= GetWorld()->GetGameState()->GetServerWorldTimeSeconds();
 
-
 		// 클라이언트.
 		if (!HasAuthority())
 		{
@@ -394,9 +393,16 @@ void AABCharacterPlayer::AttackHitCheck()
 		// 서버.
 		else
 		{
+			// 디버그 드로우로 충돌 정보 보여주기.
+			FColor DebugColor = HitDetected ? FColor::Green : FColor::Red;
+			DrawDebugAttackRange(DebugColor, Start, End, Forward);
 
+			// 서버에서는 추가로 판단하지 않고, 공격 판정 수락.
+			if (HitDetected)
+			{
+				AttackHitConfirm(OutHitResult.GetActor());
+			}
 		}
-
 
 		//#if ENABLE_DRAW_DEBUG
 		//
@@ -417,6 +423,57 @@ void AABCharacterPlayer::AttackHitCheck()
 		//
 		//#endif
 	}
+}
+
+void AABCharacterPlayer::AttackHitConfirm(AActor* HitActor)
+{
+	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("Begin"));
+
+	// 서버에서만 실행해야함.
+	if (HasAuthority())
+	{
+		// 공격 대미지를 스탯 컴포넌트에서 가져오기.
+		const float AttackDamage = Stat->GetTotalStat().Attack;
+
+		// 전달할 대미지 이벤트 변수.
+		FDamageEvent DamageEvent;
+
+		// 맞은 액터에 대미지 처리 진행.
+		HitActor->TakeDamage(
+			AttackDamage,
+			DamageEvent,
+			GetController(),
+			this
+		);
+	}
+}
+
+void AABCharacterPlayer::DrawDebugAttackRange(
+	const FColor& DrawColor,
+	FVector TraceStart,
+	FVector TraceEnd,
+	FVector Forward)
+{
+#if ENABLE_DRAW_DEBUG
+
+	const float AttackRange = Stat->GetTotalStat().AttackRange;
+	const float AttackRadius = Stat->GetAttackRadius();
+
+	FVector CapsuleOrigin = TraceStart + (TraceEnd - TraceStart) * 0.5f;
+	float CapsuleHalfHeight = AttackRange * 0.5f;
+	//FColor DrawColor = HitDetected ? FColor::Green : FColor::Red;
+
+	DrawDebugCapsule(
+		GetWorld(),
+		CapsuleOrigin,
+		CapsuleHalfHeight,
+		AttackRadius,
+		FRotationMatrix::MakeFromZ(GetActorForwardVector()).ToQuat(),
+		DrawColor,
+		false,
+		5.0f
+	);
+#endif
 }
 
 void AABCharacterPlayer::ServerRPCNotifyHit_Implementation(
@@ -446,6 +503,7 @@ void AABCharacterPlayer::ServerRPCNotifyHit_Implementation(
 			<= AcceptCheckDistance * AcceptCheckDistance)
 		{
 			// 인정 -> 대미지 처리.
+			AttackHitConfirm(HitActor);
 		}
 		else
 		{
@@ -453,13 +511,48 @@ void AABCharacterPlayer::ServerRPCNotifyHit_Implementation(
 			AB_LOG(LogABNetwork, Warning, TEXT("%s"), TEXT("Hit Rejected!"));
 		}
 
+		// 결과를 볼 수 있도록 디버그 드로우로 그려주기.
+#if ENABLE_DRAW_DEBUG
+
+		// 맞은 액터의 위치를 점으로 표시.
+		DrawDebugPoint(
+			GetWorld(),
+			ActorBoxCenter,
+			50.0f,
+			FColor::Cyan,		// 청록색.
+			false,
+			5.0f
+		);
+
+		// 맞은 위치를 점으로 표시.
+		DrawDebugPoint(
+			GetWorld(),
+			HitLocation,
+			50.0f,
+			FColor::Magenta,	// 다홍색.
+			false,
+			5.0f
+		);
+#endif
 	}
 }
 
 bool AABCharacterPlayer::ServerRPCNotifyHit_Validate(
 	const FHitResult& HitResult, float HitCheckTime)
 {
-	return true;
+	// 공격 타이밍으로 검증.
+
+	// 첫 공격인 경우에는 수락.
+	//if (0.0f == LastAttackStartTime)
+	if (LastAttackStartTime == 0.0f)
+	{
+		return true;
+	}
+
+	// 이전에 공격한 시간 이후로,
+	// 이번에 공격을 시도한 시간까지의 경과 시간이
+	// 허용 가능한 시간보다 더 걸렸는지 판단.
+	return (HitCheckTime - LastAttackStartTime) > AcceptMinCheckTime;
 }
 
 void AABCharacterPlayer::ServerRPCNotifyMiss_Implementation(
@@ -476,7 +569,19 @@ bool AABCharacterPlayer::ServerRPCNotifyMiss_Validate(
 	FVector TraceDir,
 	float HitCheckTime)
 {
-	return true;
+	// 공격 타이밍으로 검증.
+
+	// 첫 공격인 경우에는 수락.
+	//if (0.0f == LastAttackStartTime)
+	if (LastAttackStartTime == 0.0f)
+	{
+		return true;
+	}
+
+	// 이전에 공격한 시간 이후로,
+	// 이번에 공격을 시도한 시간까지의 경과 시간이
+	// 허용 가능한 시간보다 더 걸렸는지 판단.
+	return (HitCheckTime - LastAttackStartTime) > AcceptMinCheckTime;
 }
 
 // OnRep_ 함수는 클라이언트에서만 호출.

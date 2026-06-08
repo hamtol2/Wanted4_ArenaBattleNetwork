@@ -79,6 +79,17 @@ protected:
 	// 공격 처리 관련 인터페이스 함수 오버라이드.
 	virtual void AttackHitCheck() override;
 
+	// 공격 판정 확인 함수.
+	void AttackHitConfirm(AActor* HitActor);
+
+	// Debug Draw 함수.
+	void DrawDebugAttackRange(
+		const FColor& DrawColor,
+		FVector TraceStart,
+		FVector TraceEnd,
+		FVector Forward
+	);
+
 	// 공격 명령 처리를 위한 ServerRPC.
 	// 클라이언트가 서버로 요청할 때 요청한 시간을 보내도록.
 	UFUNCTION(Server, Reliable, WithValidation)
@@ -122,6 +133,9 @@ protected:
 
 	// 공격 판정에 사용할 거리 값.
 	float AcceptCheckDistance = 300.0f;
+
+	// 공격을 시도하는 시간 간격에 문제가 없는지 검증을 위한 변수.
+	float AcceptMinCheckTime = 0.15f;
 
 // UI Section
 protected:
