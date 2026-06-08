@@ -223,6 +223,12 @@ void AABCharacterPlayer::SetCharacterControlData(const UABCharacterControlData* 
 
 void AABCharacterPlayer::ShoulderMove(const FInputActionValue& Value)
 {
+	// 공격 중에는 이동하지 않도록 막기.
+	if (!bCanAttack)
+	{
+		return;
+	}
+
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
 	const FRotator Rotation = Controller->GetControlRotation();
@@ -245,6 +251,12 @@ void AABCharacterPlayer::ShoulderLook(const FInputActionValue& Value)
 
 void AABCharacterPlayer::QuaterMove(const FInputActionValue& Value)
 {
+	// 공격 중에는 이동하지 않도록 막기.
+	if (!bCanAttack)
+	{
+		return;
+	}
+
 	FVector2D MovementVector = Value.Get<FVector2D>();
 
 	float InputSizeSquared = MovementVector.SquaredLength();
