@@ -108,9 +108,9 @@ protected:
 	// 클라이언트에서 공격 판정을 했을 때 충돌하지 않은 경우 실행.
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerRPCNotifyMiss(
-		FVector TraceStart, 
-		FVector TraceEnd,
-		FVector TraceDir,
+		FVector_NetQuantize TraceStart, 
+		FVector_NetQuantize TraceEnd,
+		FVector_NetQuantize TraceDir,
 		float HitCheckTime
 	);
 

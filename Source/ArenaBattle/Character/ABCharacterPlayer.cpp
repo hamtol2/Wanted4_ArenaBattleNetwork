@@ -556,17 +556,19 @@ bool AABCharacterPlayer::ServerRPCNotifyHit_Validate(
 }
 
 void AABCharacterPlayer::ServerRPCNotifyMiss_Implementation(
-	FVector TraceStart,
-	FVector TraceEnd,
-	FVector TraceDir,
+	FVector_NetQuantize TraceStart,
+	FVector_NetQuantize TraceEnd,
+	FVector_NetQuantize TraceDir,
 	float HitCheckTime)
 {
+	// 충돌 발생이 안된 경우에 디버그 드로우.
+	DrawDebugAttackRange(FColor::Red, TraceStart, TraceEnd, TraceDir);
 }
 
 bool AABCharacterPlayer::ServerRPCNotifyMiss_Validate(
-	FVector TraceStart,
-	FVector TraceEnd,
-	FVector TraceDir,
+	FVector_NetQuantize TraceStart,
+	FVector_NetQuantize TraceEnd,
+	FVector_NetQuantize TraceDir,
 	float HitCheckTime)
 {
 	// 공격 타이밍으로 검증.
