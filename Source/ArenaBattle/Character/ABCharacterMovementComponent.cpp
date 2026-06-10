@@ -86,3 +86,93 @@ void UABCharacterMovementComponent::OnMovementUpdated(
 		bPressedTeleport = false;
 	}
 }
+
+FNetworkPredictionData_Client* UABCharacterMovementComponent::GetPredictionData_Client() const
+{
+	if (ClientPredictionData == nullptr)
+	{
+		UABCharacterMovementComponent* MutableThis 
+			= const_cast<UABCharacterMovementComponent*>(this);
+		MutableThis->ClientPredictionData = new FABNetworkPredictionData_Client_Character(*this);
+	}
+
+	return ClientPredictionData;
+}
+
+void UABCharacterMovementComponent::UpdateFromCompressedFlags(uint8 Flags)
+{
+	Super::UpdateFromCompressedFlags(Flags);
+
+	// 클라이언트에서 인코딩한 값을 디코딩.
+	bPressedTeleport = (Flags & FSavedMove_Character::FLAG_Custom_0) != 0;
+	bDidTeleport = (Flags & FSavedMove_Character::FLAG_Custom_1) != 0;
+
+	// 조건 확인 후 텔레포트를 수행할지 결정.
+	if (CharacterOwner && CharacterOwner->HasAuthority())
+	{
+		// 텔레포트가 수행이 안된 상태라면 서버에서 수행.
+		if (bPressedTeleport && !bDidTeleport)
+		{
+			AB_SUBLOG(LogABTeleport, Log, TEXT("%s"), TEXT("Teleport Begin"));
+
+			ABTeleport();
+		}
+	}
+}
+
+FABNetworkPredictionData_Client_Character::FABNetworkPredictionData_Client_Character(
+	const UCharacterMovementComponent& ClientMovement)
+	: Super(ClientMovement)
+{
+
+}
+
+FSavedMovePtr FABNetworkPredictionData_Client_Character::AllocateNewMove()
+{
+	// 새로운 타입으로 데이터 바꾸기.
+	return FSavedMovePtr(new FABSavedMove_Character());
+}
+
+void FABSavedMove_Character::Clear()
+{
+	Super::Clear();
+
+	// 프로퍼티 초기화.
+	bPressedTeleport = false;
+	bDidTeleport = false;
+}
+
+void FABSavedMove_Character::SetInitialPosition(ACharacter * Character)
+{
+	Super::SetInitialPosition(Character);
+
+	// 초기 위치 설정. 캐릭터 무브먼트 컴포넌트를 활용.
+	UABCharacterMovementComponent* ABMovement
+		= Cast<UABCharacterMovementComponent>(Character->GetCharacterMovement());
+	if (ABMovement)
+	{
+		// 텔레포트 관련 상태 값을 컴포넌트에서 읽어서 설정.
+		bPressedTeleport = ABMovement->bPressedTeleport;
+		bDidTeleport = ABMovement->bDidTeleport;
+
+		// 이렇게 설정한 값은 RPC를 통해서 서버로 전달해야함.
+	}
+}
+
+uint8 FABSavedMove_Character::GetCompressedFlags() const
+{
+	uint8 Result = Super::GetCompressedFlags();
+
+	// 전달할 값을 Result에 추가.
+	if (bPressedTeleport)
+	{
+		Result |= FLAG_Custom_0;
+	}
+
+	if (bDidTeleport)
+	{
+		Result |= FLAG_Custom_1;
+	}
+
+	return Result;
+}

@@ -6,6 +6,37 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "ABCharacterMovementComponent.generated.h"
 
+// FNetworkPredictionData_Client 클래스를 관리할 별도의 클래스 선언.
+class FABNetworkPredictionData_Client_Character
+	: public FNetworkPredictionData_Client_Character
+{
+	// 편의 목적. 부모 클래스를 Super 키워드로 재정의.
+	using Super = FNetworkPredictionData_Client_Character;
+
+public:
+	FABNetworkPredictionData_Client_Character(
+		const UCharacterMovementComponent& ClientMovement
+	);
+
+	virtual FSavedMovePtr AllocateNewMove() override;
+};
+
+// 움직임 데이터를 변경하기 위한 클래스 선언.
+class FABSavedMove_Character : public FSavedMove_Character
+{
+	// 편의 목적. 부모 클래스를 Super 키워드로 재정의.
+	using Super = FSavedMove_Character;
+
+public:
+	virtual void Clear() override;
+	virtual void SetInitialPosition(ACharacter* Character) override;
+	virtual uint8 GetCompressedFlags() const override;
+
+	// 상태 값.
+	uint8 bPressedTeleport : 1;
+	uint8 bDidTeleport : 1;
+};
+
 /**
  * 
  */
@@ -29,6 +60,13 @@ protected:
 		float DeltaSeconds, 
 		const FVector& OldLocation, 
 		const FVector& OldVelocity) override;
+
+	// 클라이언트에서 서버로 텔레포트 명령을 보낼 때 사용.
+	virtual class FNetworkPredictionData_Client* GetPredictionData_Client() 
+		const override;
+
+	// 클라이언트에서 압축해서 보낸 플래그를 서버에서 받아서 처리하는 함수.
+	virtual void UpdateFromCompressedFlags(uint8 Flags) override;
 
 public:
 	// 텔레포트 상태를 확인할 부울 변수.
