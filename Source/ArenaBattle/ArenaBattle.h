@@ -45,3 +45,4 @@
 
 // 로그 카테고리 선언.
 DECLARE_LOG_CATEGORY_EXTERN(LogABNetwork, Log, All);
+DECLARE_LOG_CATEGORY_EXTERN(LogABTeleport, Log, All);
