@@ -24,6 +24,12 @@ protected:
 	// 실제로 텔레포트를 수행하는 함수.
 	virtual void ABTeleport();
 
+	// PerformMovement 함수의 로직이 완료되면 끝 부분에서 호출되는 이벤트 함수.
+	virtual void OnMovementUpdated(
+		float DeltaSeconds, 
+		const FVector& OldLocation, 
+		const FVector& OldVelocity) override;
+
 public:
 	// 텔레포트 상태를 확인할 부울 변수.
 	// 텔레포트 입력이 들어왔는지 확인.

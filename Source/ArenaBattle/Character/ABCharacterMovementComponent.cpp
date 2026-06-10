@@ -66,3 +66,23 @@ void UABCharacterMovementComponent::ABTeleport()
 		);
 	}
 }
+
+void UABCharacterMovementComponent::OnMovementUpdated(
+	float DeltaSeconds,
+	const FVector& OldLocation,
+	const FVector& OldVelocity)
+{
+	//Super::OnMovementUpdated(DeltaSeconds, OldLocation, OldVelocity);
+
+	// 조건을 확인해서 텔레포트 수행.
+	if (bPressedTeleport && !bDidTeleport)
+	{
+		ABTeleport();
+	}
+
+	// 위에서 입력 처리를 했기 때문에 입력 상태 초기화.
+	if (bPressedTeleport)
+	{
+		bPressedTeleport = false;
+	}
+}
