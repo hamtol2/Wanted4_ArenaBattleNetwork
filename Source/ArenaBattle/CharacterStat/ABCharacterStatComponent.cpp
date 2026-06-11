@@ -46,6 +46,8 @@ void UABCharacterStatComponent::GetLifetimeReplicatedProps(
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	DOREPLIFETIME(UABCharacterStatComponent, CurrentHp);
+	DOREPLIFETIME(UABCharacterStatComponent, BaseStat);
+	DOREPLIFETIME(UABCharacterStatComponent, ModifierStat);
 }
 
 // OnRep_ 함수는 클라이언트에서만 호출.
@@ -64,6 +66,14 @@ void UABCharacterStatComponent::OnRep_CurrentHp()
 	{
 		OnHpZero.Broadcast();
 	}
+}
+
+void UABCharacterStatComponent::OnRep_BaseStat()
+{
+}
+
+void UABCharacterStatComponent::OnRep_ModifierStat()
+{
 }
 
 void UABCharacterStatComponent::SetLevelStat(int32 InNewLevel)

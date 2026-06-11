@@ -285,10 +285,13 @@ void AABCharacterBase::TakeItem(UABItemData* InItemData)
 
 void AABCharacterBase::DrinkPotion(UABItemData* InItemData)
 {
-	UABPotionItemData* PotionItemData = Cast<UABPotionItemData>(InItemData);
-	if (PotionItemData)
+	if (HasAuthority())
 	{
-		Stat->HealHp(PotionItemData->HealAmount);
+		UABPotionItemData* PotionItemData = Cast<UABPotionItemData>(InItemData);
+		if (PotionItemData)
+		{
+			Stat->HealHp(PotionItemData->HealAmount);
+		}
 	}
 }
 
@@ -302,16 +305,28 @@ void AABCharacterBase::EquipWeapon(UABItemData* InItemData)
 			WeaponItemData->WeaponMesh.LoadSynchronous();
 		}
 		Weapon->SetSkeletalMesh(WeaponItemData->WeaponMesh.Get());
-		Stat->SetModifierStat(WeaponItemData->ModifierStat);
+		//Stat->SetModifierStat(WeaponItemData->ModifierStat);
+	}
+
+	// 서버.
+	if (HasAuthority())
+	{
+		if (WeaponItemData)
+		{
+			Stat->SetModifierStat(WeaponItemData->ModifierStat);
+		}
 	}
 }
 
 void AABCharacterBase::ReadScroll(UABItemData* InItemData)
 {
-	UABScrollItemData* ScrollItemData = Cast<UABScrollItemData>(InItemData);
-	if (ScrollItemData)
+	if (HasAuthority())
 	{
-		Stat->AddBaseStat(ScrollItemData->BaseStat);
+		UABScrollItemData* ScrollItemData = Cast<UABScrollItemData>(InItemData);
+		if (ScrollItemData)
+		{
+			Stat->AddBaseStat(ScrollItemData->BaseStat);
+		}
 	}
 }
 
