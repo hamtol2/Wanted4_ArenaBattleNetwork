@@ -10,16 +10,18 @@ UABHUDWidget::UABHUDWidget(const FObjectInitializer& ObjectInitializer) : Super(
 {
 }
 
-void UABHUDWidget::UpdateStat(const FABCharacterStat& BaseStat, const FABCharacterStat& ModifierStat)
+void UABHUDWidget::UpdateStat(
+	const FABCharacterStat& BaseStat, 
+	const FABCharacterStat& ModifierStat)
 {
 	FABCharacterStat TotalStat = BaseStat + ModifierStat;
-	HpBar->UpdateStat(BaseStat, ModifierStat);
+	//HpBar->UpdateStat(BaseStat, ModifierStat);
 	CharacterStat->UpdateStat(BaseStat, ModifierStat);
 }
 
-void UABHUDWidget::UpdateHpBar(float NewCurrentHp)
+void UABHUDWidget::UpdateHpBar(float NewCurrentHp, float NewMaxHp)
 {
-	HpBar->UpdateHpBar(NewCurrentHp);
+	HpBar->UpdateHpBar(NewCurrentHp, NewMaxHp);
 }
 
 void UABHUDWidget::NativeConstruct()
