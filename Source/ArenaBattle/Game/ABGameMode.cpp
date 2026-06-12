@@ -7,6 +7,8 @@
 
 #include "ArenaBattle.h"
 #include "ABGameState.h"
+#include "GameFramework/PlayerStart.h"
+#include "EngineUtils.h"
 
 AABGameMode::AABGameMode()
 {
@@ -26,10 +28,44 @@ AABGameMode::AABGameMode()
 	GameStateClass = AABGameState::StaticClass();
 }
 
-void AABGameMode::OnPlayerDead()
+FTransform AABGameMode::GetRandomStartTransform() const
+{
+	// PlayerStartArray 배열 정보가 설정되지 않았다면 기본 트랜스폼 반환.
+	if (PlayerStartArray.Num() == 0)
+	{
+		return FTransform(FVector(0.0f, 0.0f, 230.0f));
+	}
+
+	// 배열 정보가 설정되었다면, 랜덤으로 위치 선택 후 반환.
+	int32 RandIndex = FMath::RandRange(0, PlayerStartArray.Num() - 1);
+	return PlayerStartArray[RandIndex]->GetActorTransform();
+}
+
+void AABGameMode::OnPlayerKilled(
+	AController* Killer, 
+	AController* KilledPlayer, 
+	APawn* KilledPawn)
 {
 
 }
+
+void AABGameMode::StartPlay()
+{
+	Super::StartPlay();
+
+	// 월드에 있는 플레이어 스타트 액터를 배열에 저장.
+	for (APlayerStart* PlayerStart 
+		: TActorRange<APlayerStart>(GetWorld()))
+	{
+		// 배열에 추가.
+		PlayerStartArray.Add(PlayerStart);
+	}
+}
+
+//void AABGameMode::OnPlayerDead()
+//{
+//
+//}
 
 //void AABGameMode::PreLogin(
 //	const FString& Options,

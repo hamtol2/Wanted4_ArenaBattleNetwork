@@ -23,6 +23,8 @@
 #include "EngineUtils.h"
 #include "ABCharacterMovementComponent.h"
 
+#include "Components/WidgetComponent.h"
+
 AABCharacterPlayer::AABCharacterPlayer(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UABCharacterMovementComponent>(
 		ACharacter::CharacterMovementComponentName
@@ -109,11 +111,21 @@ void AABCharacterPlayer::SetDead()
 {
 	Super::SetDead();
 
-	APlayerController* PlayerController = Cast<APlayerController>(GetController());
-	if (PlayerController)
-	{
-		DisableInput(PlayerController);
-	}
+	// 5초 대기 후에 설정이 복원 되도록 처리.
+	GetWorld()->GetTimerManager().SetTimer(
+		DeadTimerHandle,
+		this,
+		&AABCharacterPlayer::ResetPlayer,
+		5.0f,
+		false
+	);
+
+	//APlayerController* PlayerController 
+	//	= Cast<APlayerController>(GetController());
+	//if (PlayerController)
+	//{
+	//	DisableInput(PlayerController);
+	//}
 }
 
 void AABCharacterPlayer::PossessedBy(AController* NewController)
@@ -313,21 +325,13 @@ void AABCharacterPlayer::Attack()
 			);
 
 			// 타이머 설정 (공격 종료 처리).
-			FTimerHandle Handle;
+			//FTimerHandle Handle;
 			GetWorld()->GetTimerManager().SetTimer(
-				Handle,
-				FTimerDelegate::CreateLambda(
-					[&]()
-					{
-						// 공격 종료 처리.
-						bCanAttack = true;
-
-						// 공격이 끝나면 다시 이동 가능하도록.
-						GetCharacterMovement()->SetMovementMode(
-							EMovementMode::MOVE_Walking
-						);
-					}
-				), AttackTime, false
+				AttackTimerHandle,
+				this,
+				&AABCharacterPlayer::ResetAttack,
+				AttackTime,
+				false
 			);
 
 			// 애니메이션 재생.
@@ -672,7 +676,7 @@ bool AABCharacterPlayer::ServerRPCAttack_Validate(float AttackStartTime)
 	}
 
 	// 이전에 공격을 시작한 시간으로부터 충분한 시간이 지났는지 확인.
-	return (AttackStartTime - LastAttackStartTime) > AttackTime;
+	return (AttackStartTime - LastAttackStartTime) > (AttackTime - 0.4f);
 }
 
 // 이 함수는 서버에서 실행됨.
@@ -700,17 +704,12 @@ void AABCharacterPlayer::ServerRPCAttack_Implementation(
 	// 공격 종료 시간을 계산할 때, 
 	// 애니메이션 재생시간에서 클라에서 서버까지 메시지가 전달되는데까지
 	// 걸린시간을 고려해서 설정.
-	FTimerHandle Handle;
 	GetWorld()->GetTimerManager().SetTimer(
-		Handle,
-		FTimerDelegate::CreateLambda(
-			[&]()
-			{
-				// 공격 종료 처리.
-				bCanAttack = true;
-				OnRep_CanAttack();
-			}
-		), AttackTime - AttackTimeDifference, false
+		AttackTimerHandle,
+		this,
+		&AABCharacterPlayer::ResetAttack,
+		AttackTime - AttackTimeDifference,
+		false
 	);
 
 	// 클라이언트가 공격을 시작한 시간을 저장(기록).
@@ -775,4 +774,91 @@ void AABCharacterPlayer::Teleport()
 	{
 		ABMovement->SetTeleportCommand();
 	}
+}
+
+void AABCharacterPlayer::ResetPlayer()
+{
+	// 애니메이션 정리.
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance)
+	{
+		// 현재 재생 중일 수 있는 죽음 몽타주 중지.
+		AnimInstance->StopAllMontages(0.0f);
+	}
+
+	// 스탯 정리.
+	Stat->SetLevelStat(1);
+	Stat->ResetStat();
+
+	// 이동 모드 복구.
+	GetCharacterMovement()->SetMovementMode(
+		EMovementMode::MOVE_Walking
+	);
+
+	// 꺼두었던 콜리전 복구.
+	SetActorEnableCollision(true);
+
+	// HP 가시성(Visibility) 복구.
+	HpBar->SetHiddenInGame(false);
+
+	// 서버인 경우에는 플레이어 리스폰.
+	if (HasAuthority())
+	{
+		IABGameInterface* ABGameMode
+			= GetWorld()->GetAuthGameMode<IABGameInterface>();
+		if (ABGameMode)
+		{
+			// 새로운 위치 받아오기.
+			FTransform NewTransform = ABGameMode->GetRandomStartTransform();
+			TeleportTo(
+				NewTransform.GetLocation(),
+				NewTransform.GetRotation().Rotator()
+			);
+		}
+	}
+}
+
+void AABCharacterPlayer::ResetAttack()
+{
+	// 공격 종료 처리.
+	bCanAttack = true;
+
+	// 공격이 끝나면 다시 이동 가능하도록.
+	GetCharacterMovement()->SetMovementMode(
+		EMovementMode::MOVE_Walking
+	);
+}
+
+float AABCharacterPlayer::TakeDamage(
+	float DamageAmount,
+	FDamageEvent const& DamageEvent,
+	AController* EventInstigator,
+	AActor* DamageCauser)
+{
+	// 상위 로직 처리.
+	const float ActualDamage = Super::TakeDamage(
+		DamageAmount,
+		DamageEvent,
+		EventInstigator,
+		DamageCauser
+	);
+
+	// HP를 모두 소모했으면(죽었으면) 게임 모드에 알리기.
+	//if (Stat->GetCurrentHp() <= KINDA_SMALL_NUMBER)
+	if (Stat->GetCurrentHp() <= 0.0f)
+	{
+		// 게임 모드(인터페이스)에 접근해서 죽었음을 알림.
+		IABGameInterface* ABGameMode
+			= GetWorld()->GetAuthGameMode<IABGameInterface>();
+		if (ABGameMode)
+		{
+			ABGameMode->OnPlayerKilled(
+				EventInstigator,
+				GetController(),
+				this
+			);
+		}
+	}
+
+	return ActualDamage;
 }

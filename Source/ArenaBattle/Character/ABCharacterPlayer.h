@@ -12,7 +12,9 @@
  * 
  */
 UCLASS()
-class ARENABATTLE_API AABCharacterPlayer : public AABCharacterBase, public IABCharacterHUDInterface
+class ARENABATTLE_API AABCharacterPlayer 
+	: public AABCharacterBase, 
+	public IABCharacterHUDInterface
 {
 	GENERATED_BODY()
 	
@@ -151,4 +153,26 @@ protected:
 protected:
 	// 텔레포트 입력이 들어왔을 때 실행되는 함수.
 	void Teleport();
+
+	// PvP Section.
+public:
+	// 캐릭터가 죽었을 때 스탯 등 정보를 리셋(초기화)하는 함수.
+	void ResetPlayer();
+
+	// 공격을 해제할 때 사용할 함수.
+	// 타이머에 할당할 함수 (기존 람다 대체용).
+	void ResetAttack();
+
+	// 리스폰/공격 리셋에 재사용할 타이머 핸들.
+	FTimerHandle AttackTimerHandle;
+	FTimerHandle DeadTimerHandle;
+
+protected:
+	// 대미지 처리 함수 오버라이드.
+	// 상위 로직에 추가 처리.
+	virtual float TakeDamage(
+		float DamageAmount, 
+		struct FDamageEvent const& DamageEvent, 
+		class AController* EventInstigator, 
+		AActor* DamageCauser) override;
 };
