@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/GameModeBase.h"
+#include "GameFramework/GameMode.h"
 #include "Interface/ABGameInterface.h"
 #include "ABGameMode.generated.h"
 
@@ -12,16 +12,13 @@
  */
 UCLASS()
 class ARENABATTLE_API AABGameMode 
-	: public AGameModeBase, 
+	: public AGameMode, 
 	public IABGameInterface
 {
 	GENERATED_BODY()
 	
 public:
 	AABGameMode();
-
-	//virtual void OnPlayerDead() override;
-
 
 	// IABGameInterface을(를) 통해 상속됨
 	virtual FTransform GetRandomStartTransform() const override;
@@ -38,13 +35,15 @@ protected:
 	// 시작 위치로 사용할 PlayerStart 액터 배열.
 	TArray<TObjectPtr<class APlayerStart>> PlayerStartArray;
 
-	//virtual void PreLogin(
-	//	const FString& Options, 
-	//	const FString& Address, 
-	//	const FUniqueNetIdRepl& UniqueId, 
-	//	FString& ErrorMessage) override;
-	//
-	//virtual void PostLogin(APlayerController* NewPlayer) override;
-	//
-	//virtual void StartPlay() override;
+	// 컴포넌트 초기화가 끝나면 호출되는 이벤트 함수.
+	virtual void PostInitializeComponents() override;
+
+	// 타이머로 사용할 함수.
+	virtual void DefaultGameTimer();
+
+	// 경기가 종료되면 호출할 함수.
+	virtual void FinishMatch();
+
+	// 타이머 핸들.
+	FTimerHandle GameTimerHandle;
 };
