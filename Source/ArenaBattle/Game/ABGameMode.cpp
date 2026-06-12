@@ -82,10 +82,66 @@ void AABGameMode::PostInitializeComponents()
 
 void AABGameMode::DefaultGameTimer()
 {
+	// 남은 시간 계산을 위해 게임 스테이트 가져오기.
+	AABGameState* const ABGameState = Cast<AABGameState>(GameState);
+	if (ABGameState)
+	{
+		// 게임의 남은 시간 1초 감소 처리 ( 카운트 다운 )
+		ABGameState->RemainingTime -= 1;
+
+		// 남은 시간 출력.
+		AB_LOG(
+			LogABNetwork, 
+			Log, 
+			TEXT("Remaining Time: %d"), 
+			ABGameState->RemainingTime
+		);
+
+		// 시간이 모두 경과했는지 확인.
+		if (ABGameState->RemainingTime <= 0)
+		{
+			// 매치 상태에 따라 처리.
+
+			// 경기 시간이 모두 지났는데 경기가 진행 중이면, 
+			// 경기 종료 처리.
+			if (GetMatchState() == MatchState::InProgress)
+			{
+				// 게임 종료 함수 호출.
+				FinishMatch();
+			}
+			// 다음 경기를 기다리고 있는 상태라면,
+			// 서버 트래블을 사용해 재경기.
+			else if (GetMatchState() == MatchState::WaitingPostMatch)
+			{
+				// 클라이언트를 다른 맵으로 이동.
+				// 이 때 로드할 맵 정보를 전달.
+				// URL: 웹페이지 주소에서 많이 사용.
+				// URL 구조: https://www.naver.com/?id=ronniej&password=1234
+				GetWorld()->ServerTravel(
+					TEXT("/Game/ArenaBattle/Maps/Part3Step2?Listen")
+				);
+			}
+		}
+	}
 }
 
 void AABGameMode::FinishMatch()
 {
+	// 이 함수는 경기를 종료시킬 때 호출.
+
+	AABGameState* const ABGameState
+		= Cast<AABGameState>(GameState);
+
+	// 경기 상태 확인.
+	// 경기가 진행 중이라면 경기 종료 처리.
+	if (ABGameState && IsMatchInProgress())
+	{
+		// 게임 모드의 엔드 매치 호출.
+		EndMatch();
+
+		// 경기 종료 후 잠깐 대기를 위해 타이머 시간 재설정.
+		ABGameState->RemainingTime = ABGameState->ShowResultWaitingTime;
+	}
 }
 
 //void AABGameMode::OnPlayerDead()
