@@ -350,11 +350,11 @@ void AABCharacterBase::MeshLoadCompleted()
 {
 	if (MeshHandle.IsValid())
 	{
-		USkeletalMesh* Mesh
+		USkeletalMesh* CharacterMesh
 			= Cast<USkeletalMesh>(MeshHandle->GetLoadedAsset());
-		if (Mesh)
+		if (CharacterMesh)
 		{
-			GetMesh()->SetSkeletalMesh(Mesh);
+			GetMesh()->SetSkeletalMesh(CharacterMesh);
 			GetMesh()->SetHiddenInGame(false);
 		}
 	}

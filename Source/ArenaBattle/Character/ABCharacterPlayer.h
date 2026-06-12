@@ -176,6 +176,13 @@ protected:
 		class AController* EventInstigator, 
 		AActor* DamageCauser) override;
 
+	// 플레이어 스테이트로부터 메시 정보를 업데이트하는 함수.
+	void UpdateMeshFromPlayerState();
+
 	UPROPERTY(config)
 	TArray<FSoftObjectPath> PlayerMeshes;
+
+	// 클라이언트에서 캐릭터 메시를 선택하기 위해 사용.
+	// 플레이어 스테이트가 클라이언트에 동기화(리플리케이션)될 때 호출.
+	virtual void OnRep_PlayerState() override;
 };

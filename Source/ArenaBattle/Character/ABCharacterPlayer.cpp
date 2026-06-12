@@ -25,6 +25,9 @@
 
 #include "Components/WidgetComponent.h"
 
+#include "GameFramework/PlayerState.h"
+#include "Engine/AssetManager.h"
+
 AABCharacterPlayer::AABCharacterPlayer(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UABCharacterMovementComponent>(
 		ACharacter::CharacterMovementComponentName
@@ -130,37 +133,10 @@ void AABCharacterPlayer::SetDead()
 
 void AABCharacterPlayer::PossessedBy(AController* NewController)
 {
-	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("Begin"));
-
-	// PossessedBy 함수가 호출되기 전에 액터의 소유 확인.
-	AActor* OwnerActor = GetOwner();
-	if (OwnerActor)
-	{
-		// 소유 정보가 있다면, 소유자의 이름 출력.
-		AB_LOG(LogABNetwork, Log, TEXT("Onwer: %s"),
-			*OwnerActor->GetName());
-	}
-	else
-	{
-		AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("No Owner"));
-	}
-
 	Super::PossessedBy(NewController);
 
-	// PossessedBy 함수가 호출된 후에 액터의 소유 확인.
-	OwnerActor = GetOwner();
-	if (OwnerActor)
-	{
-		// 소유 정보가 있다면, 소유자의 이름 출력.
-		AB_LOG(LogABNetwork, Log, TEXT("Onwer: %s"),
-			*OwnerActor->GetName());
-	}
-	else
-	{
-		AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("No Owner"));
-	}
-
-	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("End"));
+	// 서버의 경우에는 로컬 플레이어를 PossessedBy를 통해서 진행.
+	UpdateMeshFromPlayerState();
 }
 
 void AABCharacterPlayer::GetLifetimeReplicatedProps(
@@ -861,4 +837,31 @@ float AABCharacterPlayer::TakeDamage(
 	}
 
 	return ActualDamage;
+}
+
+void AABCharacterPlayer::UpdateMeshFromPlayerState()
+{
+	// PlayerState에서 관리하는 PlayerId 값을 사용해 메시 선택.
+	int32 MeshIndex = FMath::Clamp(
+		GetPlayerState()->GetPlayerId() % PlayerMeshes.Num(),
+		0,
+		PlayerMeshes.Num() - 1
+	);
+
+	// 메시 로드 요청 (비동기).
+	MeshHandle = UAssetManager::Get().GetStreamableManager().RequestAsyncLoad(
+		PlayerMeshes[MeshIndex],
+		FStreamableDelegate::CreateUObject(
+			this,
+			&AABCharacterBase::MeshLoadCompleted
+		)
+	);
+}
+
+void AABCharacterPlayer::OnRep_PlayerState()
+{
+	Super::OnRep_PlayerState();
+
+	// 플레이어 스테이트가 동기화되면, 캐릭터의 메시 설정.
+	UpdateMeshFromPlayerState();
 }
