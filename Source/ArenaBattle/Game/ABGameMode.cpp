@@ -50,7 +50,24 @@ void AABGameMode::OnPlayerKilled(
 	AController* KilledPlayer, 
 	APawn* KilledPawn)
 {
+	AB_LOG(LogABNetwork, Log, TEXT("%s"), TEXT("Begin"));
 
+	// 점수 처리 진행.
+	// 플레이어 스테이트가 기본 제공하는 점수 사용.
+	APlayerState* KillerPlayerState = Killer->PlayerState;
+	if (KillerPlayerState)
+	{
+		// Kill을 올린 플레이어에 1점 추가.
+		KillerPlayerState->SetScore(KillerPlayerState->GetScore() + 1);
+
+		// kill 수가 2보다 큰 플레이어가 있으면 게임 종료.
+		if (KillerPlayerState->GetScore() > 2)
+		{
+			// 경기 종료 처리.
+			// 5초를 더 대기 후 ServerTravel.
+			FinishMatch();
+		}
+	}
 }
 
 void AABGameMode::StartPlay()

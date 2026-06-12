@@ -32,7 +32,7 @@ public:
 	int32 RemainingTime;
 
 	// 플레이 시간 (단위: 초).
-	int32 MatchPlayTime = 20;
+	int32 MatchPlayTime = 2000;
 
 	// 게임이 종료되었을 때 잠시 대기할 시간(단위: 초).
 	int32 ShowResultWaitingTime = 5;
