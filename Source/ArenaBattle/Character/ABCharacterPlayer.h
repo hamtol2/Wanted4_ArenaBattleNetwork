@@ -11,7 +11,7 @@
 /**
  * 
  */
-UCLASS()
+UCLASS(config = ArenaBattle)
 class ARENABATTLE_API AABCharacterPlayer 
 	: public AABCharacterBase, 
 	public IABCharacterHUDInterface
@@ -175,4 +175,7 @@ protected:
 		struct FDamageEvent const& DamageEvent, 
 		class AController* EventInstigator, 
 		AActor* DamageCauser) override;
+
+	UPROPERTY(config)
+	TArray<FSoftObjectPath> PlayerMeshes;
 };
